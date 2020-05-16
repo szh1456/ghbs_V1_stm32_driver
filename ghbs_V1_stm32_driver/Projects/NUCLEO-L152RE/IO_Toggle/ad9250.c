@@ -68,7 +68,7 @@ const int32_t shadow_regs[SHADOW_REGISTER_COUNT] = {
 	0x00, // AD9250_SHD_REG_FD_LOWER_THD
 	0x00  // AD9250_SHD_REG_FD_DWELL_TIME
 };
-const int8_t addrs[62] = {
+const int8_t addrs[63] = {
 	0x00,
 	0x01,
 	0x02,
@@ -78,6 +78,7 @@ const int8_t addrs[62] = {
 	0x0A,
 	0x0B,
 	0x0D,
+	0x0E,//enable build-in-test-mode
 	0x10,
 	0x14,
 	0x15,
@@ -194,46 +195,214 @@ int32_t ad9250_create(struct ad9250_dev *device, uint8_t deviceNum)
 int32_t ad9250_setup(struct ad9250_dev *dev)
 {
 	int32_t ret;
+	/* Software reset. */
 	ad9250_soft_reset(dev);
-
-	/* Configure the AD9250 device. */
-	ret = ad9250_write(dev,
-			   AD9250_REG_SPI_CFG,
-			   AD9250_SPI_CFG_SOFT_RST);
+	
+	Delay(1); //wait 500us minimum
+	
+	/* Disable the JESD204B PHY. */
+	ret = ad9250_set_bits_to_reg(dev,
+				     AD9250_REG_204B_CTRL1,
+				     AD9250_204B_CTRL1_POWER_DOWN,
+				     AD9250_204B_CTRL1_POWER_DOWN);
 	if(ret < AD9250_SUCCESS) {
 		return ret;
-	}//soft reset
+	}
+	//----------------------------------------------------------------------------------------------------------------------------------------------------
+	/* Optional: modify any other non-JESD204B register from default setting depending on application
+	requirements. Note, any local register must be followed by a transfer command (0xFF= 0x01) */
+	
+//	/* Disable/Enable 204b test mode */
+//	ret = ad9250_set_bits_to_reg(dev,
+//				     AD9250_REG_204B_CTRL1,
+//				     AD9250_204B_CTRL1_TEST_SAMPLE_EN,
+//				     AD9250_204B_CTRL1_TEST_SAMPLE_EN);
+//	if(ret < AD9250_SUCCESS) {
+//		return ret;
+//	}
+	
 	ret = ad9250_set_bits_to_reg(dev,
 				     AD9250_REG_PDWN,
 				     dev->ad9250_st.pdata->extrn_pdwnmode * AD9250_PDWN_EXTERN,
 				     AD9250_PDWN_EXTERN);
 	if(ret < AD9250_SUCCESS) {
 		return ret;
-	}//put the device in full power down or standby
+		}//External PDWN mode: full power down or standby (full power down)
 
+	/* enable clk duty cycle stabliser if clk divider enabled. */
 	ret = ad9250_write(dev,
-			   AD9250_REG_CLOCK,
+			   AD9250_REG_CLOCK,//Local register
 			   dev->ad9250_st.pdata->en_clk_dcs * AD9250_CLOCK_DUTY_CYCLE |
 			   AD9250_CLOCK_SELECTION(dev->ad9250_st.pdata->clk_selection));
 	if(ret < AD9250_SUCCESS) {
 		return ret;
-	}//enable clk duty cycle stabliser if clk divider enabled
-
-	ret = ad9250_write(dev,
-			   AD9250_REG_CLOCK_DIV,
-			   AD9250_CLOCK_DIV_RATIO(dev->ad9250_st.pdata->clk_div_ratio) |
-			   AD9250_CLOCK_DIV_PHASE(dev->ad9250_st.pdata->clk_div_phase));
+	}
+	/* A transfer operation is needed because AD9250_REG_CLOCK is a shadowed register. */
+	ret = ad9250_transfer(dev);
 	if(ret < AD9250_SUCCESS) {
 		return ret;
-	}//configure the divider and the phase offset
-
+	}//update all local configs to global
+	
+		
+	/* user test mode config. */
+	ret = ad9250_set_bits_to_reg(dev,
+				     AD9250_REG_TEST,
+				     AD9250_TEST_USER_TEST_MODE(0), // 0 - repeat, 1 - single shot
+				     AD9250_TEST_USER_TEST_MODE(-1));
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+  /* Synchronously update registers. */
+	ret = ad9250_transfer(dev);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}//update all local configs to global
+	
+	/* sclect test mode. */
+	ret = ad9250_test_mode(dev,0);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+  /* Synchronously update registers. */
+	ret = ad9250_transfer(dev);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}//update all local configs to global
+	
+	/*set vref level. */
 	ret = ad9250_write(dev,
 			   AD9250_REG_VREF,
 			   AD9250_VREF_FS_ADJUST(dev->ad9250_st.pdata->adc_vref));
 	if(ret < AD9250_SUCCESS) {
 		return ret;
-	}//set vref level
+	}
+		/* Synchronously update registers. */
+	ret = ad9250_transfer(dev);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}//update all local configs to global
+	
+	/* set user test pattern */
+		ret = ad9250_write(dev,
+			   AD9250_REG_USER_TEST1_LSB,
+			   0x00);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}	
+				ret = ad9250_write(dev,
+			   AD9250_REG_USER_TEST1_MSB,
+			   0x01);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+				ret = ad9250_write(dev,
+			   AD9250_REG_USER_TEST2_LSB,
+			   0x02);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}	
+				ret = ad9250_write(dev,
+			   AD9250_REG_USER_TEST2_MSB,
+			   0x03);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}	
+				ret = ad9250_write(dev,
+			   AD9250_REG_USER_TEST3_LSB,
+			   0x04);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}	
+				ret = ad9250_write(dev,
+			   AD9250_REG_USER_TEST3_MSB,
+			   0x05);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}	
+				ret = ad9250_write(dev,
+			   AD9250_REG_USER_TEST4_LSB,
+			   0x06);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}	
+				ret = ad9250_write(dev,
+			   AD9250_REG_USER_TEST4_MSB,
+			   0x07);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	//-------------------------------------------
+	
+	/* Configure the Fast-detect circuit. */
+	ret = ad9250_fast_detect_setup(dev);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}//see 'ad9250_fast_detect_setup()'
+	/* A transfer operation is needed because FD are shadowed registers. */
+	ret = ad9250_transfer(dev);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}		
+		
+		
+//-----------------------------------------------------------------------------------------------------------------------------------------------------		
+	/* configure the divider and the phase offset. */
+	ret = ad9250_write(dev,
+			   AD9250_REG_CLOCK_DIV,//Local register
+			   AD9250_CLOCK_DIV_RATIO(dev->ad9250_st.pdata->clk_div_ratio) |
+			   AD9250_CLOCK_DIV_PHASE(dev->ad9250_st.pdata->clk_div_phase));
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	/* Synchronously update registers. */
+	ret = ad9250_transfer(dev);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}//update all local configs to global
+	
+	/* Select jesd204B quick configuration option */
+	ret = ad9250_write(dev,
+			   AD9250_REG_204B_QUICK_CFG,
+			   0x22);//AD9250_204B_QUICK_CFG(dev->ad9250_st.p_jesd204b->quick_cfg_option));
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	
+	/* Enable the internal clock delay bloct for minimum delay. */
+	ret = ad9250_write(dev,
+			   AD9250_REG_INT_DIG_CLK_DLY,
+			   0x80);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	
+	/* set pll low encode. */
+	ret = ad9250_write(dev,
+			   AD9250_REG_PLL_ENCODE,
+			   AD9250_PLL_ENCODE(dev->ad9250_st.pdata->pll_low_encode));
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	
+	
+	//----------------------------------------------------------------------------------------------------------------------------------------------
 
+	/* Configure the JESD204B interface. */
+	ret = ad9250_jesd204b_setup(dev);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}// see 'ad9250_jesd204b_setup()'
+	
+	/* Re-enable lane(s) */
+	ret = ad9250_set_bits_to_reg(dev,
+				     AD9250_REG_204B_CTRL1,
+				     0,
+				     AD9250_204B_CTRL1_POWER_DOWN);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	
+	/* Force an internal FIFO alignment. */
 	ret = ad9250_write(dev,
 			   AD9250_REG_PLL_ENCODE,
 			   AD9250_PLL_ENCODE(dev->ad9250_st.pdata->pll_low_encode));
@@ -241,27 +410,100 @@ int32_t ad9250_setup(struct ad9250_dev *dev)
 		return ret;
 	}// set pll low encode
 
-	/* Synchronously update registers. */
-	ret = ad9250_transfer(dev);
-	if(ret < AD9250_SUCCESS) {
-		return ret;
-	}//update all local configs to global
-
-	/* Configure the JESD204B interface. */
-	ret = ad9250_jesd204b_setup(dev);
-	if(ret < AD9250_SUCCESS) {
-		return ret;
-	}// see 'ad9250_jesd204b_setup()'
-
-	/* Configure the Fast-detect circuit. */
-	ret = ad9250_fast_detect_setup(dev);
-	if(ret < AD9250_SUCCESS) {
-		return ret;
-	}//see 'ad9250_fast_detect_setup()'
-
-	/* Synchronously update registers. */
-	ret = ad9250_transfer(dev);
+	Delay(1);
 	
+//	/* Internal FIFO clock adjustment. */
+//	ret = ad9250_int_fifo_adj(dev);
+//	if(ret < AD9250_SUCCESS) {
+//		return ret;
+//	}// see 'ad9250_int_fifo_adj()'
+	
+	ret = ad9250_write(dev,
+			   AD9250_REG_INT_DIG_CLK_DLY,
+			   0x81);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	ret = ad9250_write(dev,
+			   AD9250_REG_INT_DIG_CLK_DLY_2,
+			   0x81);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	ret = ad9250_write(dev,
+			   AD9250_REG_INT_DIG_CLK_DLY,
+			   0x82);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	ret = ad9250_write(dev,
+			   AD9250_REG_INT_DIG_CLK_DLY_2,
+			   0x82);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	ret = ad9250_write(dev,
+			   AD9250_REG_INT_DIG_CLK_DLY,
+			   0x83);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	ret = ad9250_write(dev,
+			   AD9250_REG_INT_DIG_CLK_DLY_2,
+			   0x83);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	ret = ad9250_write(dev,
+			   AD9250_REG_INT_DIG_CLK_DLY,
+			   0x84);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	ret = ad9250_write(dev,
+			   AD9250_REG_INT_DIG_CLK_DLY_2,
+			   0x84);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	ret = ad9250_write(dev,
+			   AD9250_REG_INT_DIG_CLK_DLY,
+			   0x85);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	ret = ad9250_write(dev,
+			   AD9250_REG_INT_DIG_CLK_DLY_2,
+			   0x85);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	ret = ad9250_write(dev,
+			   AD9250_REG_INT_DIG_CLK_DLY,
+			   0x86);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	ret = ad9250_write(dev,
+			   AD9250_REG_INT_DIG_CLK_DLY_2,
+			   0x86);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	ret = ad9250_write(dev,
+			   AD9250_REG_INT_DIG_CLK_DLY,
+			   0x87);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	ret = ad9250_write(dev,
+			   AD9250_REG_INT_DIG_CLK_DLY_2,
+			   0x87);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	
+	Delay(1);
 	return ret;
 }
 
@@ -799,7 +1041,7 @@ int32_t ad9250_set_user_pattern(struct ad9250_dev *dev,
 	int32_t pattern_address = 0;;
 	int32_t ret = 0;
 
-	pattern_address = AD9250_REG_USER_TEST1 + (2 * pattern_no);
+	pattern_address = AD9250_REG_USER_TEST1_MSB + (2 * pattern_no);
 	ret = ad9250_write(dev,
 			   pattern_address,
 			   user_pattern);
@@ -919,39 +1161,8 @@ int32_t ad9250_jesd204b_setup(struct ad9250_dev *dev)
 	int32_t ret = 0;
 
 	dev->ad9250_st.p_jesd204b = &ad9250_jesd204b_interface;
-
-	/* Disable lanes before changing configuration */
-	ret = ad9250_set_bits_to_reg(dev,
-				     AD9250_REG_204B_CTRL1,
-				     AD9250_204B_CTRL1_POWER_DOWN,
-				     AD9250_204B_CTRL1_POWER_DOWN);
-	if(ret < AD9250_SUCCESS) {
-		return ret;
-	}
-	/* Select quick configuration option */
-	ret = ad9250_write(dev,
-			   AD9250_REG_204B_QUICK_CFG,
-			   AD9250_204B_QUICK_CFG(dev->ad9250_st.p_jesd204b->quick_cfg_option));
-	if(ret < AD9250_SUCCESS) {
-		return ret;
-	}
 	/* Configure detailed options */
-	/* CML differential output drive level adjustment */
-	ret = ad9250_write(dev,
-			   AD9250_REG_CML,
-			   AD9250_CML_DIFF_OUT_LEVEL(dev->ad9250_st.p_jesd204b->cml_level));
-	if(ret < AD9250_SUCCESS) {
-		return ret;
-	}
-	/* Select the behavioral of the 204B core when in standby. */
-	ret = ad9250_set_bits_to_reg(dev,
-				     AD9250_REG_PDWN,
-				     dev->ad9250_st.p_jesd204b->jtx_in_standby * AD9250_PDWN_JTX,
-				     AD9250_PDWN_JTX);
-	if(ret < AD9250_SUCCESS) {
-		return ret;
-	}
-
+  //---------------------------------------------------------------------subclass sclection---------------------------------------
 	/* Select subclass. */
 	ret = ad9250_set_bits_to_reg(dev,
 				     AD9250_REG_204B_PARAM_NP,
@@ -960,14 +1171,8 @@ int32_t ad9250_jesd204b_setup(struct ad9250_dev *dev)
 	if(ret < AD9250_SUCCESS) {
 		return ret;
 	}
-	/* Configure the tail bits and control bits. */
-	ret = ad9250_set_bits_to_reg(dev,
-				     AD9250_REG_204B_PARAM_CS_N,
-				     AD9250_204B_PARAM_CS_N_NR_CTRL_BITS(dev->ad9250_st.p_jesd204b->ctrl_bits_no),
-				     AD9250_204B_PARAM_CS_N_NR_CTRL_BITS(-1));
-	if(ret < AD9250_SUCCESS) {
-		return ret;
-	}
+	
+	/* JTX CS bits assignment. */
 	ret = ad9250_set_bits_to_reg(dev,
 				     AD9250_REG_OUT_MODE,
 				     AD9250_OUT_MODE_JTX_BIT_ASSIGN(dev->ad9250_st.p_jesd204b->ctrl_bits_assign),
@@ -980,15 +1185,41 @@ int32_t ad9250_jesd204b_setup(struct ad9250_dev *dev)
 	if(ret < AD9250_SUCCESS) {
 		return ret;
 	}
-	if(dev->ad9250_st.p_jesd204b->ctrl_bits_no == 0) {
-		ret = ad9250_set_bits_to_reg(dev,
-					     AD9250_REG_204B_CTRL1,
-					     AD9250_204B_CTRL1_TAIL_BITS * dev->ad9250_st.p_jesd204b->tail_bits_mode,
-					     AD9250_204B_CTRL1_TAIL_BITS);
-		if(ret < AD9250_SUCCESS) {
-			return ret;
-		}
+//		/* Invert ADC output. */ //added by Zihang 15/04/2020
+//	ret = ad9250_set_bits_to_reg(dev,
+//				     AD9250_REG_OUT_MODE,
+//				     AD9250_OUT_MODE_INVERT_DATA,
+//				     AD9250_OUT_MODE_INVERT_DATA);
+//	if(ret < AD9250_SUCCESS) {
+//		return ret;
+//	}
+//	/* A transfer operation is needed because AD9250_REG_OUT_MODE is a shadowed register. */
+//	ret = ad9250_transfer(dev);
+//	if(ret < AD9250_SUCCESS) {
+//		return ret;
+//	}
+	/* Output data format : offset binary or two's complement. */
+	ret = ad9250_set_bits_to_reg(dev,
+				     AD9250_REG_OUT_MODE,
+				     AD9250_OUT_MODE_DATA_FORMAT(1), // 0 - offset binary, 1 - two's complement(default)
+				     AD9250_OUT_MODE_DATA_FORMAT(-1));
+	if(ret < AD9250_SUCCESS) {
+		return ret;
 	}
+	/* A transfer operation is needed because AD9250_REG_OUT_MODE is a shadowed register. */
+	ret = ad9250_transfer(dev);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	//---------------------------------------------------------------------0x15---------------------------------------
+		/* CML differential output drive level adjustment */
+	ret = ad9250_write(dev,
+			   AD9250_REG_CML,
+			   AD9250_CML_DIFF_OUT_LEVEL(dev->ad9250_st.p_jesd204b->cml_level));
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+ //---------------------------------------------------------------------0x66, 0x67---------------------------------------
 	/* Set lane identification values. */
 	ret = ad9250_write(dev,
 			   AD9250_REG_204B_DID_CFG,
@@ -1014,12 +1245,7 @@ int32_t ad9250_jesd204b_setup(struct ad9250_dev *dev)
 	if(ret < AD9250_SUCCESS) {
 		return ret;
 	}
-	/* Set number of frames per multiframe, K */
-	ret = ad9250_jesd204b_set_frames(dev,
-					 dev->ad9250_st.p_jesd204b->k);
-	if(ret < AD9250_SUCCESS) {
-		return ret;
-	}
+	//---------------------------------------------------------------------0x6E, 0x70, 0x72---------------------------------------
 	/* Scramble, SCR. */
 	ret = ad9250_set_bits_to_reg(dev,
 				     AD9250_REG_204B_PARAM_SCR_L,
@@ -1028,26 +1254,49 @@ int32_t ad9250_jesd204b_setup(struct ad9250_dev *dev)
 	if(ret < AD9250_SUCCESS) {
 		return ret;
 	}
-	/* Select lane synchronization options */
-	ret = ad9250_set_bits_to_reg(dev,
-				     AD9250_REG_204B_CTRL1,
-				     AD9250_204B_CTRL1_ILAS_MODE(dev->ad9250_st.p_jesd204b->ilas_mode),
-				     AD9250_204B_CTRL1_ILAS_MODE(-1));
+	
+	/* Set number of frames per multiframe, K */
+	ret = ad9250_jesd204b_set_frames(dev,
+					 dev->ad9250_st.p_jesd204b->k);
 	if(ret < AD9250_SUCCESS) {
 		return ret;
 	}
+	/* Configure the tail bits and control bits. */
 	ret = ad9250_set_bits_to_reg(dev,
-				     AD9250_REG_204B_CTRL1,
-				     dev->ad9250_st.p_jesd204b->en_ilas_test * AD9250_204B_CTRL1_TEST_SAMPLE_EN,
-				     AD9250_204B_CTRL1_TEST_SAMPLE_EN);
+				     AD9250_REG_204B_PARAM_CS_N,
+				     AD9250_204B_PARAM_CS_N_NR_CTRL_BITS(dev->ad9250_st.p_jesd204b->ctrl_bits_no),
+				     AD9250_204B_PARAM_CS_N_NR_CTRL_BITS(-1));
 	if(ret < AD9250_SUCCESS) {
 		return ret;
 	}
-
-	/* Set additional digital output configuration options */
-	/* Set polarity of serial output data */
-	ret = ad9250_jesd204b_invert_logic(dev,
-					   dev->ad9250_st.p_jesd204b->invert_logic_bits);
+	
+	//---------------------------------------------------------------------0x82 to 0xA8---------------------------------------
+	/* Option to remap converter and lane assignments */
+	ret = ad9250_write(dev,
+			   AD9250_REG_204B_LANE_ASSGN1,
+			   AD9250_204B_LANE_ASSGN1(dev->ad9250_st.p_jesd204b->lane0_assign) |
+			   0x02);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	ret = ad9250_write(dev,
+			   AD9250_REG_204B_LANE_ASSGN2,
+			   AD9250_204B_LANE_ASSGN2(dev->ad9250_st.p_jesd204b->lane1_assign) |
+			   0x30);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	
+	//---------------------------------------------------------------------Subclass 1 config---------------------------------------
+	/* Eanable SYSREF buffer first to avoid false triggering befor setting the remaining bits in register 0x3A */
+	ret = ad9250_write(dev,
+			   AD9250_REG_SYS_CTRL,
+			   0x01);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	/* A transfer operation is needed, because AD9250_REG_SYS_CTRL is a shadowed register. */
+	ret = ad9250_transfer(dev);
 	if(ret < AD9250_SUCCESS) {
 		return ret;
 	}
@@ -1067,45 +1316,48 @@ int32_t ad9250_jesd204b_setup(struct ad9250_dev *dev)
 	if(ret < AD9250_SUCCESS) {
 		return ret;
 	}
-	/* Option to remap converter and lane assignments */
-	ret = ad9250_write(dev,
-			   AD9250_REG_204B_LANE_ASSGN1,
-			   AD9250_204B_LANE_ASSGN1(dev->ad9250_st.p_jesd204b->lane0_assign) |
-			   0x02);
-	if(ret < AD9250_SUCCESS) {
-		return ret;
-	}
-	ret = ad9250_write(dev,
-			   AD9250_REG_204B_LANE_ASSGN2,
-			   AD9250_204B_LANE_ASSGN2(dev->ad9250_st.p_jesd204b->lane1_assign) |
-			   0x30);
-	if(ret < AD9250_SUCCESS) {
-		return ret;
-	}
 	
-	//test pattern injection point and mode selection -- added by Haoran on 11/10
-	
-	ret = ad9250_jesd204b_select_test_injection_point(dev, 1);
-	if(ret < AD9250_SUCCESS) {
-		return ret;
-	}
-	
-	ret = ad9250_jesd204b_test_mode(dev, 2);
-	if(ret < AD9250_SUCCESS) {
-		return ret;
-	}
-	
-	/* Re-enable lane(s) */
+	//---------------------------------------------------------------------Test mode config---------------------------------------
+	/* Select ilas mode */
 	ret = ad9250_set_bits_to_reg(dev,
 				     AD9250_REG_204B_CTRL1,
-				     0,
-				     AD9250_204B_CTRL1_POWER_DOWN);
+				     AD9250_204B_CTRL1_ILAS_MODE(dev->ad9250_st.p_jesd204b->ilas_mode),
+				     AD9250_204B_CTRL1_ILAS_MODE(-1));
 	if(ret < AD9250_SUCCESS) {
 		return ret;
 	}
-
+	/* Enable/Disable 204B test samples */
+	ret = ad9250_set_bits_to_reg(dev,
+				     AD9250_REG_204B_CTRL1,
+				     dev->ad9250_st.p_jesd204b->en_ilas_test * AD9250_204B_CTRL1_TEST_SAMPLE_EN,
+				     AD9250_204B_CTRL1_TEST_SAMPLE_EN);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	/* Set polarity of serial output data */
+	ret = ad9250_jesd204b_invert_logic(dev,
+					   dev->ad9250_st.p_jesd204b->invert_logic_bits);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	
+	//test pattern injection point and mode selection -- added by Haoran on 11/10	
+	ret = ad9250_jesd204b_select_test_injection_point(dev, 2);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	
+	/* 204B test mode config. */
+	ret = ad9250_jesd204b_test_mode(dev, 0);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+	
+	
 	return ret;
 }
+	
+	
 
 /***************************************************************************//**
  * @brief Configures the power mode of the JESD204B data transmit block.
@@ -1392,7 +1644,7 @@ int32_t ad9250_config_print(struct ad9250_dev *dev)
 {
 	int32_t ret = 0;
 	
-	for(int8_t i = 0; i < 62; i++)
+	for(int8_t i = 0; i < 63; i++)
 	{
 		ret = ad9250_read(dev,(AD9250_R1B | addrs[i]));
 		if(ret < AD9250_SUCCESS) {

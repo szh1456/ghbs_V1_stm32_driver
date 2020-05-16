@@ -73,6 +73,7 @@ int main(void)
   
 	Force_Sync_GPIOInit();
 		FORCE_SYNC_HIGH();
+	FORCE_RESET_HIGH();
 	force_sync_flag = 0;
 	
 	
@@ -99,6 +100,53 @@ int main(void)
 	Delay(1000);
 	}
 	*/
+	
+	 ltc6953_master_isOkay();
+ ltc6953_master_detect();
+ ltc6953_master_config_global();
+ ltc6953_master_config_srq();
+ ltc6953_master_config_outs();
+ 
+ ltc6952_aux_detect(DEVICE_AUX_A);
+ ltc6952_aux_isOkay(DEVICE_AUX_A, 1);
+ ltc6952_aux_config_global(DEVICE_AUX_A, 0x07FF);
+ ltc6952_aux_config_srq(DEVICE_AUX_A);
+
+ ltc6952_aux_config_out_dclk(DEVICE_AUX_A, 0, 0,0);
+ ltc6952_aux_config_out_dclk(DEVICE_AUX_A, 0, 2,0);
+ ltc6952_aux_config_out_dclk(DEVICE_AUX_A, 0, 4,0);
+ ltc6952_aux_config_out_dclk(DEVICE_AUX_A, 0, 5,0);
+ ltc6952_aux_config_out_dclk(DEVICE_AUX_A, 0, 8,0);
+ 
+ 
+ 
+ ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 0, 1);
+ ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 0, 3);
+ ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 0, 6);
+ ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 0, 7);
+ ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 0, 9);
+ ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 0, 10);
+ 
+ ltc6952_aux_detect(DEVICE_AUX_B);
+ ltc6952_aux_isOkay(DEVICE_AUX_B, 1);
+ ltc6952_aux_config_global(DEVICE_AUX_B,  0x07FE );
+ ltc6952_aux_config_srq(DEVICE_AUX_B);
+ 
+ ltc6952_aux_config_out_dclk(DEVICE_AUX_B, 0, 0,0);
+ ltc6952_aux_config_out_dclk(DEVICE_AUX_B, 0, 2,0);
+ ltc6952_aux_config_out_dclk(DEVICE_AUX_B, 0, 4,0);
+ ltc6952_aux_config_out_dclk(DEVICE_AUX_B, 0, 5,0);
+ ltc6952_aux_config_out_dclk(DEVICE_AUX_B, 0, 8,0);
+ ltc6952_aux_config_out_dclk(DEVICE_AUX_B, 0, 9,0);
+
+ 
+ ltc6952_aux_config_out_sysref(DEVICE_AUX_B, 0, 1);
+ ltc6952_aux_config_out_sysref(DEVICE_AUX_B, 0, 3);
+ ltc6952_aux_config_out_sysref(DEVICE_AUX_B, 0, 6);
+ ltc6952_aux_config_out_sysref(DEVICE_AUX_B, 0, 7);
+ Delay(2000);
+ ltc6953_master_aux_sync();
+ 
 	
 	struct ad9250_dev  ad9250_deviceA ;
 	struct ad9250_dev  ad9250_deviceB ;
@@ -159,85 +207,30 @@ int main(void)
 	//ad9250_read(ad9250_deviceA, AD9250_REG_SPI_CFG);
 	ad9250_config_print(&ad9250_deviceA);
 	
-	//ad9250_soft_reset(ad9250_deviceB);
-	//while (1){
-	//ad9250_write(ad9250_deviceA, AD9250_REG_CML,0x03);
-	//ad9250_write(ad9250_deviceA, AD9250_REG_DEVICE_UPDATE,0x01);
-	//Delay(10);
-	//ad9250_read(ad9250_deviceA, AD9250_REG_CML);
-	//printf("[0] 0x%08X  \n\r", data);
-	
-	
+	FORCE_RESET_LOW();
 	Delay(50);
-	///}
+	FORCE_RESET_HIGH();
+
+	Delay(1000);
+
+	ltc6952_perform_sysref();
 	
-	
-	
- ltc6953_master_isOkay();
- ltc6953_master_detect();
- ltc6953_master_config_global();
- ltc6953_master_config_srq();
- ltc6953_master_config_outs();
- 
- ltc6952_aux_detect(DEVICE_AUX_A);
- ltc6952_aux_isOkay(DEVICE_AUX_A, 1);
- ltc6952_aux_config_global(DEVICE_AUX_A, 0x07FF);
- ltc6952_aux_config_srq(DEVICE_AUX_A);
-
- ltc6952_aux_config_out_dclk(DEVICE_AUX_A, 0, 0,0);
- ltc6952_aux_config_out_dclk(DEVICE_AUX_A, 0, 2,0);
- ltc6952_aux_config_out_dclk(DEVICE_AUX_A, 0, 4,0);
- ltc6952_aux_config_out_dclk(DEVICE_AUX_A, 0, 5,0);
- ltc6952_aux_config_out_dclk(DEVICE_AUX_A, 0, 8,0);
- ltc6952_aux_config_out_dclk(DEVICE_AUX_A, 0, 10,0);
- 
- 
- ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 0, 1);
- ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 0, 3);
- ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 0, 6);
- ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 0, 7);
- ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 0, 9);
- 
- ltc6952_aux_detect(DEVICE_AUX_B);
- ltc6952_aux_isOkay(DEVICE_AUX_B, 1);
- ltc6952_aux_config_global(DEVICE_AUX_B,  0x07FE );
- ltc6952_aux_config_srq(DEVICE_AUX_B);
- 
- ltc6952_aux_config_out_dclk(DEVICE_AUX_B, 0, 0,0);
- ltc6952_aux_config_out_dclk(DEVICE_AUX_B, 0, 2,0);
- ltc6952_aux_config_out_dclk(DEVICE_AUX_B, 0, 4,0);
- ltc6952_aux_config_out_dclk(DEVICE_AUX_B, 0, 5,0);
- ltc6952_aux_config_out_dclk(DEVICE_AUX_B, 0, 8,0);
- ltc6952_aux_config_out_dclk(DEVICE_AUX_B, 0, 9,0);
-
- 
- ltc6952_aux_config_out_sysref(DEVICE_AUX_B, 0, 1);
- ltc6952_aux_config_out_sysref(DEVICE_AUX_B, 0, 3);
- ltc6952_aux_config_out_sysref(DEVICE_AUX_B, 0, 6);
- ltc6952_aux_config_out_sysref(DEVICE_AUX_B, 0, 7);
- Delay(2000);
- ltc6953_master_aux_sync();
-// Delay(1000); 
-// ltc6952_aux_lp_sysref();
-// Delay(5000);
- //ltc6952_aux_fp_sysref();
-// Delay(5000); 
-// ltc6952_aux_lp_sysref();
-// Delay(5000);
-// ltc6952_aux_fp_sysref();
-
-
 
  while(1)
  {
 	if (force_sync_flag)//(force_sync_flag)
 	{
+		  
+		
 			printf("force sync flag recorded!\r\n");
+		
 			FORCE_SYNC_LOW();
-			//Delay(1);
+			
 			//ltc6952_aux_fp_sysref();
-		//ltc6952_perform_sysref();
-			Delay(500);
+		  ltc6952_perform_sysref();
+		  
+		
+			//Delay(500);
 			FORCE_SYNC_HIGH();
 			force_sync_flag = 0;
 	}

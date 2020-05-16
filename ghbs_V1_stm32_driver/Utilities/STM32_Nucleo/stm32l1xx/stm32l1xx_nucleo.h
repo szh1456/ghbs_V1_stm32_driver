@@ -152,9 +152,13 @@ typedef enum
 #define FORCE_SYNC_GPIO_PORT       			 GPIOA                       /* GPIOA */
 #define FORCE_SYNC_GPIO_CLK              RCC_AHBPeriph_GPIOA
 
+#define FORCE_RESET_PIN             			 GPIO_Pin_2                  /* PA.02 */
+#define FORCE_RESET_GPIO_PORT       			 GPIOA                       /* GPIOA */
+
 #define FORCE_SYNC_HIGH()						 GPIO_SetBits(FORCE_SYNC_GPIO_PORT, FORCE_SYNC_PIN)
 #define FORCE_SYNC_LOW()						 GPIO_ResetBits(FORCE_SYNC_GPIO_PORT, FORCE_SYNC_PIN)
-
+#define FORCE_RESET_HIGH()						 GPIO_SetBits(FORCE_RESET_GPIO_PORT, FORCE_RESET_PIN)
+#define FORCE_RESET_LOW()						 GPIO_ResetBits(FORCE_RESET_GPIO_PORT, FORCE_RESET_PIN)
 
 
 /** @addtogroup STM32L1XX_NUCLEO_LOW_LEVEL_SPI

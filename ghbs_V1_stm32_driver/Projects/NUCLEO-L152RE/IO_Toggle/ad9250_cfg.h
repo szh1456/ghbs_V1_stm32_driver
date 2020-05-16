@@ -53,8 +53,8 @@ struct ad9250_platform_data ad9250_pdata_lpc = {
 	0,	// clkSelection
 	0,	// clkDivRatio
 	0,	// clkDivPhase
-	16,	// adcVref
-	0,	// pllLowEncode
+  0,	// adcVref
+	1,	// pllLowEncode
 	"ad9250-lpc" //name
 };
 
@@ -78,7 +78,7 @@ struct ad9250_jesd204b_cfg ad9250_jesd204b_interface = {
 	1,	// enSysRef
 	1,	// enSyncInB
 	1,	// sysRefMode
-	1,	// alignSyncInB
+	0,	// alignSyncInB
 	1,	// alignSysRef
 	0,	// lane0Assign
 	1,	// lane1Assign
