@@ -168,7 +168,7 @@
 /* AD9250_REG_OUT_MODE */
 #define AD9250_OUT_MODE_JTX_BIT_ASSIGN(x)	(((x) & 0x7) << 5)
 #define AD9250_OUT_MODE_DISABLE			(1 << 4)
-#define AD9250_OUT_MODE_INVERT_DATA		(1 << 3)
+#define AD9250_OUT_MODE_INVERT_DATA		(1 << 2)
 #define AD9250_OUT_MODE_DATA_FORMAT(x)		(((x) & 0x1) << 0)
 
 /* AD9250_REG_CML */
@@ -482,7 +482,7 @@ struct ad9250_dev {
 
 /*! Configures the device. */
 int32_t ad9250_create(struct ad9250_dev *device, uint8_t deviceNum);
-int32_t ad9250_setup(struct ad9250_dev *dev);
+int32_t ad9250_setup(struct ad9250_dev *dev,int32_t lane,int32_t inverse);
 /*! Free the resources allocated by ad9250_setup(). */
 int32_t ad9250_remove(struct ad9250_dev *dev);
 /*! Reads the value of the selected register. */
@@ -496,6 +496,8 @@ int32_t ad9250_write(struct ad9250_dev *dev,
 int32_t ad9250_transfer(struct ad9250_dev *dev);
 /*! Resets all registers to their default values. */
 int32_t ad9250_soft_reset(struct ad9250_dev *dev);
+/*! Select path to config. */
+int32_t ad9250_path_sel(struct ad9250_dev *dev, int32_t lane);
 /*! Configures the power mode of the chip. */
 int32_t ad9250_chip_pwr_mode(struct ad9250_dev *dev,
 			     int32_t mode);

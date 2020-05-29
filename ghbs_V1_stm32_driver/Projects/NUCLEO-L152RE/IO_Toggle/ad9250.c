@@ -192,13 +192,19 @@ int32_t ad9250_create(struct ad9250_dev *device, uint8_t deviceNum)
 	dev->ad9250_st.pdata = &ad9250_pdata_lpc;
 	return AD9250_SUCCESS;
 }
-int32_t ad9250_setup(struct ad9250_dev *dev)
+int32_t ad9250_setup(struct ad9250_dev *dev,int32_t lane,int32_t inverse)
 {
 	int32_t ret;
 	/* Software reset. */
-	ad9250_soft_reset(dev);
+	if (lane != 1)
+		ad9250_soft_reset(dev);
 	
 	Delay(1); //wait 500us minimum
+	
+	ret = ad9250_path_sel(dev,lane);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+		}//choose which path of SPI writting to.
 	
 	/* Disable the JESD204B PHY. */
 	ret = ad9250_set_bits_to_reg(dev,
@@ -258,8 +264,19 @@ int32_t ad9250_setup(struct ad9250_dev *dev)
 		return ret;
 	}//update all local configs to global
 	
-	/* sclect test mode. */
-	ret = ad9250_test_mode(dev,0);
+	/* select test mode. */
+	ret = ad9250_test_mode(dev,8);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}
+  /* Synchronously update registers. */
+	ret = ad9250_transfer(dev);
+	if(ret < AD9250_SUCCESS) {
+		return ret;
+	}//update all local configs to global
+	
+	/* config data invert. */
+	ret = ad9250_output_invert(dev,inverse);
 	if(ret < AD9250_SUCCESS) {
 		return ret;
 	}
@@ -285,49 +302,49 @@ int32_t ad9250_setup(struct ad9250_dev *dev)
 	/* set user test pattern */
 		ret = ad9250_write(dev,
 			   AD9250_REG_USER_TEST1_LSB,
-			   0x00);
+			   0xDE);
 	if(ret < AD9250_SUCCESS) {
 		return ret;
 	}	
 				ret = ad9250_write(dev,
 			   AD9250_REG_USER_TEST1_MSB,
-			   0x01);
+			   0xAD);
 	if(ret < AD9250_SUCCESS) {
 		return ret;
 	}
 				ret = ad9250_write(dev,
 			   AD9250_REG_USER_TEST2_LSB,
-			   0x02);
+			   0xBE);
 	if(ret < AD9250_SUCCESS) {
 		return ret;
 	}	
 				ret = ad9250_write(dev,
 			   AD9250_REG_USER_TEST2_MSB,
-			   0x03);
+			   0xFF);
 	if(ret < AD9250_SUCCESS) {
 		return ret;
 	}	
 				ret = ad9250_write(dev,
 			   AD9250_REG_USER_TEST3_LSB,
-			   0x04);
+			   0x00);
 	if(ret < AD9250_SUCCESS) {
 		return ret;
 	}	
 				ret = ad9250_write(dev,
 			   AD9250_REG_USER_TEST3_MSB,
-			   0x05);
+			   0x00);
 	if(ret < AD9250_SUCCESS) {
 		return ret;
 	}	
 				ret = ad9250_write(dev,
 			   AD9250_REG_USER_TEST4_LSB,
-			   0x06);
+			   0x11);
 	if(ret < AD9250_SUCCESS) {
 		return ret;
 	}	
 				ret = ad9250_write(dev,
 			   AD9250_REG_USER_TEST4_MSB,
-			   0x07);
+			   0x11);
 	if(ret < AD9250_SUCCESS) {
 		return ret;
 	}
@@ -757,7 +774,40 @@ int32_t ad9250_chip_pwr_mode(struct ad9250_dev *dev,
 
 	return ret;
 }
+/***************************************************************************//**
+ * @brief Select which path SPI is writting to.
+ *
+ * @param dev  - The device structure.
+ * @param lane - path selection.
+*		   Example: 0 - path A;
+ *			    1 - path B;
+ *			    -1 - A and B.
+ *
+ * @return Returns negative error code or the set power mode.
+ *******************************************************************************/
+int32_t ad9250_path_sel(struct ad9250_dev *dev,
+			     int32_t lane)
+{
+	uint32_t ret = 0;
 
+	switch (lane)
+	{
+		case 0:
+			ret = ad9250_write(dev,
+			 AD9250_REG_CH_INDEX,
+			 0x01);break;
+		case 1:
+			ret = ad9250_write(dev,
+			 AD9250_REG_CH_INDEX,
+			 0x02);break;
+		default:
+			ret = ad9250_write(dev,
+			 AD9250_REG_CH_INDEX,
+			 0x03);		
+	}
+
+	return ret;
+}
 /***************************************************************************//**
  * @brief Selects a channel as the current channel for further configurations.
  *

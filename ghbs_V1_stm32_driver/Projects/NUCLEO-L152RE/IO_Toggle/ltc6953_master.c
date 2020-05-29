@@ -217,13 +217,13 @@ void ltc6952_aux_fp_sysref(void)//put followers to full-power mode while waiting
 void ltc6952_perform_sysref(void)// request SYSREF
 {	
 	printf("[4.0.0] Starting perform sysref request...");
-	ltc6952_aux_fp_sysref();
+	//ltc6952_aux_fp_sysref();
 	
 	uni_WriteStatusRegister(LTC6953_MASTER_SRQ_ADDR + 1, 0x01, DEVICE_MASTER);//toggle SSRQ, send sysref request
-	Delay(2);
+	Delay(1);
 	uni_WriteStatusRegister(LTC6953_MASTER_SRQ_ADDR + 1, 0x00, DEVICE_MASTER);//toggle SSRQ
-	uni_WriteStatusRegister(0x0B, 0x00, DEVICE_AUX_A);
-	uni_WriteStatusRegister(0x0B, 0x00, DEVICE_AUX_B);
+	//uni_WriteStatusRegister(0x0B, 0x00, DEVICE_AUX_A);
+	//uni_WriteStatusRegister(0x0B, 0x00, DEVICE_AUX_B);
 	printf("\tFinished.\r\n");
 }
 

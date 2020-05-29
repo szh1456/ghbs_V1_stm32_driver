@@ -101,7 +101,7 @@ int main(void)
 	}
 	*/
 	
-	 ltc6953_master_isOkay();
+ltc6953_master_isOkay();
  ltc6953_master_detect();
  ltc6953_master_config_global();
  ltc6953_master_config_srq();
@@ -120,12 +120,12 @@ int main(void)
  
  
  
- ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 0, 1);
- ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 0, 3);
- ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 0, 6);
- ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 0, 7);
- ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 0, 9);
- ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 0, 10);
+ ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 20, 1);
+ ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 20, 3);
+ ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 20, 6);
+ ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 20, 7);
+ ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 20, 9);
+ ltc6952_aux_config_out_sysref(DEVICE_AUX_A, 20, 10);
  
  ltc6952_aux_detect(DEVICE_AUX_B);
  ltc6952_aux_isOkay(DEVICE_AUX_B, 1);
@@ -140,12 +140,14 @@ int main(void)
  ltc6952_aux_config_out_dclk(DEVICE_AUX_B, 0, 9,0);
 
  
- ltc6952_aux_config_out_sysref(DEVICE_AUX_B, 0, 1);
- ltc6952_aux_config_out_sysref(DEVICE_AUX_B, 0, 3);
- ltc6952_aux_config_out_sysref(DEVICE_AUX_B, 0, 6);
- ltc6952_aux_config_out_sysref(DEVICE_AUX_B, 0, 7);
+ ltc6952_aux_config_out_sysref(DEVICE_AUX_B, 20, 1);
+ ltc6952_aux_config_out_sysref(DEVICE_AUX_B, 20, 3);
+ ltc6952_aux_config_out_sysref(DEVICE_AUX_B, 20, 6);
+ ltc6952_aux_config_out_sysref(DEVICE_AUX_B, 20, 7);
  Delay(2000);
  ltc6953_master_aux_sync();
+ Delay(1);
+ ltc6952_aux_fp_sysref();
  
 	
 	struct ad9250_dev  ad9250_deviceA ;
@@ -170,54 +172,66 @@ int main(void)
 //	ad9250_create(&ad9250_deviceB, 'B');
 
   printf("[*] ADC A output:  \n\r");
-	ad9250_setup(&ad9250_deviceA);
+	ad9250_setup(&ad9250_deviceA, -1, 0);
 	printf("***************************  \n\r");
   
 	printf("[*] ADC B output:  \n\r");
-	ad9250_setup(&ad9250_deviceB);
+	ad9250_setup(&ad9250_deviceB, -1, 0);
 	printf("***************************  \n\r");
 	
 	printf("[*] ADC C output:  \n\r");
-	ad9250_setup(&ad9250_deviceC);
+	ad9250_setup(&ad9250_deviceC, -1, 0);
 	printf("***************************  \n\r");
 	
-	printf("[*] ADC D output:  \n\r");
-	ad9250_setup(&ad9250_deviceD);
+	printf("[*] ADC D path A output:  \n\r");
+	ad9250_setup(&ad9250_deviceD, -1, 0);
+	//printf("[*] ADC D path B output:  \n\r");
+	//ad9250_setup(&ad9250_deviceD, 1, 1);
 	printf("***************************  \n\r");
 	
 	printf("[*] ADC E output:  \n\r");
-	ad9250_setup(&ad9250_deviceE);
+	ad9250_setup(&ad9250_deviceE, -1, 0);
 	printf("***************************  \n\r");
 	
 	printf("[*] ADC F output:  \n\r");
-	ad9250_setup(&ad9250_deviceF);
+	ad9250_setup(&ad9250_deviceF, -1, 0);
 	printf("***************************  \n\r");
 	
 	printf("[*] ADC G output:  \n\r");
-	ad9250_setup(&ad9250_deviceG);
+	ad9250_setup(&ad9250_deviceG, -1, 0);
 	printf("***************************  \n\r");
 	
 	printf("[*] ADC H output:  \n\r");
-	ad9250_setup(&ad9250_deviceH);
+	ad9250_setup(&ad9250_deviceH, -1, 0);
 	printf("***************************  \n\r");
 	
 	//ad9250_write(ad9250_deviceA, AD9250_REG_SPI_CFG,0x3C);
 	//ad9250_write(ad9250_deviceA, AD9250_REG_DEVICE_UPDATE,0x01);
 	//Delay(1);
 	//ad9250_read(ad9250_deviceA, AD9250_REG_SPI_CFG);
-	ad9250_config_print(&ad9250_deviceA);
+	ad9250_config_print(&ad9250_deviceD);
 	
 	FORCE_RESET_LOW();
 	Delay(50);
 	FORCE_RESET_HIGH();
 
-	Delay(1000);
+	Delay(50);
 
-	ltc6952_perform_sysref();
+	//ltc6952_perform_sysref();
 	
 
  while(1)
  {
+//	 ad9250_read(&ad9250_deviceA,(AD9250_R1B | 0x0A));
+//	 ad9250_read(&ad9250_deviceB,(AD9250_R1B | 0x0A));	 
+//	 ad9250_read(&ad9250_deviceC,(AD9250_R1B | 0x0A));
+//	 ad9250_read(&ad9250_deviceD,(AD9250_R1B | 0x0A));
+//	 ad9250_read(&ad9250_deviceE,(AD9250_R1B | 0x0A));
+//	 ad9250_read(&ad9250_deviceF,(AD9250_R1B | 0x0A));
+//	 ad9250_read(&ad9250_deviceG,(AD9250_R1B | 0x0A));
+//	 ad9250_read(&ad9250_deviceH,(AD9250_R1B | 0x0A));
+//	 printf("\n");
+	 Delay(50);
 	if (force_sync_flag)//(force_sync_flag)
 	{
 		  
@@ -230,7 +244,7 @@ int main(void)
 		  ltc6952_perform_sysref();
 		  
 		
-			//Delay(500);
+			Delay(50);
 			FORCE_SYNC_HIGH();
 			force_sync_flag = 0;
 	}
